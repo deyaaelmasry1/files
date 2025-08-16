@@ -5,8 +5,8 @@ const fs = require("fs");
 const path = require("path");
 
 // GitHub settings
-const owner = "YOUR_GITHUB_USERNAME";
-const repo = "YOUR_REPO_NAME";
+const owner = "deyaaelmary1";
+const repo = "files";
 const branch = "main"; // branch to push files
 const token = process.env.GITHUB_TOKEN; // from GitHub secrets
 
