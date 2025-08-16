@@ -1,0 +1,29 @@
+name: Update Posts Index
+
+on:
+  push:
+    paths:
+      - 'posts/*.md'
+  workflow_dispatch:
+
+jobs:
+  update-index:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install @actions/github @actions/core gray-matter
+
+      - name: Run index generator
+        run: node .github/scripts/generate-index.js
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          REPO: deyaaelmasry1/your-repo-name   # 👈 change to your repo name
