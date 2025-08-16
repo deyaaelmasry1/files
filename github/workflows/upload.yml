@@ -1,1 +1,24 @@
+name: Upload File
+
+on:
+  repository_dispatch:
+    types: [upload-file]
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Save uploaded file
+        run: |
+          echo "${{ github.event.client_payload.content }}" | base64 -d > "uploads/${{ github.event.client_payload.name }}"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add uploads/
+          git commit -m "Add file ${{ github.event.client_payload.name }}"
+          git push
 
