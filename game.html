@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Farming Simulator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/3.7.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(to bottom, #5e9b5e, #83c783);
+            min-height: 100vh;
+            overflow: hidden;
+            color: #333;
+            touch-action: none;
+            user-select: none;
+        }
+        
+        #game-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .panel {
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            pointer-events: all;
+        }
+        
+        .stats-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 280px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #388E3C;
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: linear-gradient(to right, #4CAF50, #8BC34A);
+            width: 0%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .crop-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 220px;
+        }
+        
+        .crop-option {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+        
+        .crop-option:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .crop-option.selected {
+            border-color: #4CAF50;
+            background-color: #E8F5E9;
+        }
+        
+        .crop-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+        
+        .crop-info {
+            flex-grow: 1;
+        }
+        
+        .crop-name {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        
+        .crop-details {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .crop-price {
+            font-weight: bold;
+            color: #388E3C;
+        }
+        
+        .controls-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            padding: 18px;
+        }
+        
+        .btn {
+            background: linear-gradient(to bottom, #4CAF50, #388E3C);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            background: linear-gradient(to bottom, #388E3C, #2E7D32);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .shop-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+        }
+        
+        .shop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .shop-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .item-price {
+            font-weight: bold;
+            color: #388E3C;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 16px 24px;
+            background: linear-gradient(to right, #4CAF50, #388E3C);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 1000;
+            max-width: 400px;
+            text-align: center;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .notification.show {
+            opacity: 1;
+        }
+        
+        .level-up {
+            background: linear-gradient(to right, #FFC107, #FFA000);
+            color: #333;
+        }
+        
+        .mini-map {
+            position: fixed;
+            top: 180px;
+            left: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            pointer-events: all;
+        }
+        
+        #weather-toggle {
+            position: fixed;
+            top: 350px;
+            left: 20px;
+            pointer-events: all;
+        }
+        
+        #time-toggle {
+            position: fixed;
+            top: 410px;
+            left: 20px;
+            pointer-events: all;
+        }
+        
+        .toggle-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+        
+        .toggle-btn:hover {
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+        }
+        
+        #stats-chart {
+            position: fixed;
+            bottom: 200px;
+            right: 340px;
+            width: 300px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            pointer-events: all;
+        }
+        
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            z-index: 1000;
+            pointer-events: all;
+            display: none;
+            max-width: 500px;
+            width: 90%;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+        
+        .modal-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #388E3C;
+            text-align: center;
+        }
+        
+        .modal-content {
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            pointer-events: none;
+            z-index: 1001;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .tooltip.show {
+            opacity: 1;
+        }
+        
+        @media (max-width: 1200px) {
+            .stats-panel {
+                top: 10px;
+                left: 10px;
+                width: 250px;
+            }
+            
+            .crop-panel {
+                top: 10px;
+                right: 10px;
+                width: 200px;
+            }
+            
+            .shop-panel {
+                bottom: 10px;
+                right: 10px;
+                width: 280px;
+            }
+            
+            #stats-chart {
+                display: none;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .stats-panel {
+                grid-template-columns: 1fr;
+                width: 200px;
+            }
+            
+            .controls-panel {
+                flex-wrap: wrap;
+                justify-content: center;
+                width: 90%;
+            }
+            
+            .btn {
+                padding: 12px 18px;
+                font-size: 0.9rem;
+            }
+            
+            .mini-map {
+                top: auto;
+                bottom: 200px;
+                width: 120px;
+                height: 120px;
+            }
+            
+            #weather-toggle, #time-toggle {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container"></div>
+    
+    <div id="ui-overlay">
+        <div class="panel stats-panel">
+            <div class="stat-item">
+                <span class="stat-label">Money</span>
+                <span class="stat-value" id="money">$100</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Level</span>
+                <span class="stat-value" id="level">1</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Experience</span>
+                <span class="stat-value" id="exp">0/100</span>
+                <div class="progress-bar">
+                    <div class="progress" id="exp-progress"></div>
+                </div>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Energy</span>
+                <span class="stat-value" id="energy">100/100</span>
+                <div class="progress-bar">
+                    <div class="progress" id="energy-progress"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel crop-panel">
+            <h3>Select Crop</h3>
+            <div class="crop-option" data-crop="carrot">
+                <span class="crop-icon">🥕</span>
+                <div class="crop-info">
+                    <div class="crop-name">Carrot</div>
+                    <div class="crop-details">30s • $5</div>
+                </div>
+                <span class="crop-price">$5</span>
+            </div>
+            <div class="crop-option" data-crop="wheat">
+                <span class="crop-icon">🌾</span>
+                <div class="crop-info">
+                    <div class="crop-name">Wheat</div>
+                    <div class="crop-details">60s • $10</div>
+                </div>
+                <span class="crop-price">$10</span>
+            </div>
+            <div class="crop-option" data-crop="corn">
+                <span class="crop-icon">🌽</span>
+                <div class="crop-info">
+                    <div class="crop-name">Corn</div>
+                    <div class="crop-details">90s • $20</div>
+                </div>
+                <span class="crop-price">$20</span>
+            </div>
+        </div>
+        
+        <div class="panel controls-panel">
+            <button class="btn" id="harvest-all">
+                <span>Harvest All</span>
+            </button>
+            <button class="btn" id="buy-land">
+                <span>Buy Land ($50)</span>
+            </button>
+            <button class="btn" id="upgrade-tools">
+                <span>Upgrade Tools ($100)</span>
+            </button>
+            <button class="btn" id="manage-farm">
+                <span>Manage Farm</span>
+            </button>
+        </div>
+        
+        <div class="panel shop-panel">
+            <h3>Shop</h3>
+            <div class="shop-item" data-item="fertilizer">
+                <div>Fertilizer <span>(+25% growth speed)</span></div>
+                <span class="item-price">$30</span>
+            </div>
+            <div class="shop-item" data-item="irrigation">
+                <div>Irrigation System <span>(+20% yield)</span></div>
+                <span class="item-price">$50</span>
+            </div>
+            <div class="shop-item" data-item="greenhouse">
+                <div>Greenhouse <span>(Unlock rare crops)</span></div>
+                <span class="item-price">$200</span>
+            </div>
+        </div>
+        
+        <div class="mini-map" id="mini-map"></div>
+        
+        <button class="toggle-btn" id="weather-toggle">
+            <span>Change Weather</span>
+        </button>
+        
+        <button class="toggle-btn" id="time-toggle">
+            <span>Time: Day</span>
+        </button>
+        
+        <div id="stats-chart">
+            <canvas id="profit-chart"></canvas>
+        </div>
+        
+        <div class="notification" id="notification"></div>
+        
+        <div class="tooltip" id="tooltip"></div>
+    </div>
+    
+    <div class="modal-overlay" id="modal-overlay"></div>
+    
+    <div class="modal" id="upgrade-modal">
+        <div class="modal-header">Tool Upgraded!</div>
+        <div class="modal-content">
+            <p>Your farming tools have been upgraded to level 2. You can now plant and harvest crops 25% faster!</p>
+            <p>Next upgrade available at level 5.</p>
+        </div>
+        <div class="modal-actions">
+            <button class="btn" id="modal-close">Great!</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize external libraries
+            const TWEEN = window.TWEEN;
+            
+            // Game state
+            const gameState = {
+                money: 100,
+                level: 1,
+                exp: 0,
+                expToNextLevel: 100,
+                energy: 100,
+                maxEnergy: 100,
+                selectedCrop: null,
+                fields: [],
+                time: 'day',
+                weather: 'sunny',
+                toolsLevel: 1,
+                upgrades: {
+                    fertilizer: false,
+                    irrigation: false,
+                    greenhouse: false
+                },
+                profitHistory: [],
+                energyConsumption: 5,
+                energyRecoveryRate: 0.5
+            };
+            
+            // Crop data
+            const crops = {
+                carrot: { name: 'Carrot', price: 5, growTime: 30, sellPrice: 15, icon: '🥕' },
+                wheat: { name: 'Wheat', price: 10, growTime: 60, sellPrice: 25, icon: '🌾' },
+                corn: { name: 'Corn', price: 20, growTime: 90, sellPrice: 50, icon: '🌽' }
+            };
+            
+            // Initialize Three.js scene
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x87CEEB);
+            document.getElementById('game-container').appendChild(renderer.domElement);
+            
+            // Add ground
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
+            const groundMaterial = new THREE.MeshBasicMaterial({ color: 0x7CB342 });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            scene.add(ground);
+            
+            // Add some 3D elements for visual interest
+            function createTree(x, z) {
+                const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.7, 5, 8);
+                const trunkMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513 });
+                const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                trunk.position.set(x, 2.5, z);
+                
+                const foliageGeometry = new THREE.ConeGeometry(3, 7, 8);
+                const foliageMaterial = new THREE.MeshBasicMaterial({ color: 0x228B22 });
+                const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+                foliage.position.set(x, 7, z);
+                
+                scene.add(trunk);
+                scene.add(foliage);
+            }
+            
+            // Create some trees around the farm
+            createTree(-20, -20);
+            createTree(20, -20);
+            createTree(-20, 20);
+            createTree(20, 20);
+            
+            // Add a simple farm house
+            const houseGeometry = new THREE.BoxGeometry(10, 6, 10);
+            const houseMaterial = new THREE.MeshBasicMaterial({ color: 0xF5DEB3 });
+            const house = new THREE.Mesh(houseGeometry, houseMaterial);
+            house.position.set(0, 3, -30);
+            scene.add(house);
+            
+            // Set camera position
+            camera.position.set(0, 15, 30);
+            camera.lookAt(0, 0, 0);
+            
+            // Initialize Howler.js sounds
+            const soundEffects = {
+                plant: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-soil-hoe-hit-1386.mp3'] }),
+                harvest: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3'] }),
+                coins: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-coins-woosh-1943.mp3'] }),
+                error: new Howl({ src: ['https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3'] })
+            };
+            
+            // Initialize Chart.js
+            const profitChart = new Chart(document.getElementById('profit-chart'), {
+                type: 'line',
+                data: {
+                    labels: ['1', '2', '3', '4', '5', '6', '7'],
+                    datasets: [{
+                        label: 'Daily Profit',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        borderColor: '#4CAF50',
+                        tension: 0.3,
+                        fill: true,
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Profit History'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // DOM elements
+            const moneyEl = document.getElementById('money');
+            const levelEl = document.getElementById('level');
+            const expEl = document.getElementById('exp');
+            const expProgressEl = document.getElementById('exp-progress');
+            const energyEl = document.getElementById('energy');
+            const energyProgressEl = document.getElementById('energy-progress');
+            const notificationEl = document.getElementById('notification');
+            const harvestAllBtn = document.getElementById('harvest-all');
+            const buyLandBtn = document.getElementById('buy-land');
+            const upgradeToolsBtn = document.getElementById('upgrade-tools');
+            const manageFarmBtn = document.getElementById('manage-farm');
+            const weatherToggleBtn = document.getElementById('weather-toggle');
+            const timeToggleBtn = document.getElementById('time-toggle');
+            const modalOverlay = document.getElementById('modal-overlay');
+            const upgradeModal = document.getElementById('upgrade-modal');
+            const modalCloseBtn = document.getElementById('modal-close');
+            const tooltipEl = document.getElementById('tooltip');
+            
+            // Initialize the game
+            function initGame() {
+                createField(0, 0, 20, 20, 3, 3);
+                updateStats();
+                
+                // Add event listeners for crop selection
+                document.querySelectorAll('.crop-option').forEach(option => {
+                    option.addEventListener('click', function() {
+                        selectCrop(this.dataset.crop);
+                    });
+                    
+                    // Add tooltips
+                    option.addEventListener('mousemove', function(e) {
+                        showTooltip(crops[this.dataset.crop].name, e.clientX, e.clientY);
+                    });
+                    
+                    option.addEventListener('mouseleave', function() {
+                        hideTooltip();
+                    });
+                });
+                
+                // Add event listeners for shop items
+                document.querySelectorAll('.shop-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        buyItem(this.dataset.item);
+                    });
+                    
+                    // Add tooltips
+                    item.addEventListener('mousemove', function(e) {
+                        showTooltip(this.dataset.item.charAt(0).toUpperCase() + this.dataset.item.slice(1), e.clientX, e.clientY);
+                    });
+                    
+                    item.addEventListener('mouseleave', function() {
+                        hideTooltip();
+                    });
+                });
+                
+                // Add event listener for harvest all button
+                harvestAllBtn.addEventListener('click', harvestAll);
+                
+                // Add event listener for buy land button
+                buyLandBtn.addEventListener('click', buyLand);
+                
+                // Add event listener for upgrade tools button
+                upgradeToolsBtn.addEventListener('click', upgradeTools);
+                
+                // Add event listener for manage farm button
+                manageFarmBtn.addEventListener('click', manageFarm);
+                
+                // Add event listener for weather toggle
+                weatherToggleBtn.addEventListener('click', toggleWeather);
+                
+                // Add event listener for time toggle
+                timeToggleBtn.addEventListener('click', toggleTime);
+                
+                // Add event listener for modal close
+                modalCloseBtn.addEventListener('click', closeModal);
+                
+                // Start the animation loop
+                animate();
+                
+                // Start game timers
+                setInterval(updateEnergy, 1000);
+                setInterval(saveGame, 30000); // Auto-save every 30 seconds
+                
+                // Load saved game if available
+                loadGame();
+            }
+            
+            // Create a field
+            function createField(x, z, width, depth, rows, cols) {
+                const field = {
+                    x, z, width, depth, rows, cols,
+                    plots: []
+                };
+                
+                // Create 3D representation of the field
+                const fieldGeometry = new THREE.PlaneGeometry(width, depth);
+                const fieldMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x8A6642,
+                    side: THREE.DoubleSide
+                });
+                const fieldMesh = new THREE.Mesh(fieldGeometry, fieldMaterial);
+                fieldMesh.rotation.x = Math.PI / 2;
+                fieldMesh.position.set(x, 0.1, z);
+                scene.add(fieldMesh);
+                
+                // Add grid lines for plots
+                const gridMaterial = new THREE.LineBasicMaterial({ color: 0x6D4C2E });
+                
+                // Horizontal lines
+                for (let i = 0; i <= rows; i++) {
+                    const points = [];
+                    points.push(new THREE.Vector3(-width/2, 0.11, -depth/2 + (i * depth/rows)));
+                    points.push(new THREE.Vector3(width/2, 0.11, -depth/2 + (i * depth/rows)));
+                    
+                    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(lineGeometry, gridMaterial);
+                    fieldMesh.add(line);
+                }
+                
+                // Vertical lines
+                for (let i = 0; i <= cols; i++) {
+                    const points = [];
+                    points.push(new THREE.Vector3(-width/2 + (i * width/cols), 0.11, -depth/2));
+                    points.push(new THREE.Vector3(-width/2 + (i * width/cols), 0.11, depth/2));
+                    
+                    const lineGeometry = new THREE.BufferGeometry().setFromPoints(points);
+                    const line = new THREE.Line(lineGeometry, gridMaterial);
+                    fieldMesh.add(line);
+                }
+                
+                // Create plots
+                const plotWidth = width / cols;
+                const plotDepth = depth / rows;
+                
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const plot = {
+                            row: r,
+                            col: c,
+                            crop: null,
+                            progress: 0,
+                            mesh: null
+                        };
+                        
+                        field.plots.push(plot);
+                    }
+                }
+                
+                gameState.fields.push(field);
+                
+                return field;
+            }
+            
+            // Select crop to plant
+            function selectCrop(cropType) {
+                if (gameState.money >= crops[cropType].price) {
+                    gameState.selectedCrop = cropType;
+                    
+                    // Update UI to show selected crop
+                    document.querySelectorAll('.crop-option').forEach(option => {
+                        option.classList.remove('selected');
+                    });
+                    document.querySelector(`.crop-option[data-crop="${cropType}"]`).classList.add('selected');
+                    
+                    showNotification(`Selected ${crops[cropType].name} to plant`);
+                    soundEffects.plant.play();
+                } else {
+                    showNotification("Not enough money to buy this crop!");
+                    soundEffects.error.play();
+                }
+            }
+            
+            // Plant crop in a plot
+            function plantCrop(field, plot) {
+                if (gameState.money < crops[gameState.selectedCrop].price) {
+                    showNotification("Not enough money to plant this crop!");
+                    soundEffects.error.play();
+                    return;
+                }
+                
+                if (gameState.energy < gameState.energyConsumption) {
+                    showNotification("Not enough energy to plant!");
+                    soundEffects.error.play();
+                    return;
+                }
+                
+                gameState.money -= crops[gameState.selectedCrop].price;
+                gameState.energy -= gameState.energyConsumption;
+                updateStats();
+                
+                plot.crop = gameState.selectedCrop;
+                plot.plantedAt = Date.now();
+                plot.progress = 0;
+                
+                // Create 3D representation of the crop
+                if (plot.mesh) {
+                    scene.remove(plot.mesh);
+                }
+                
+                const cropGeometry = new THREE.CylinderGeometry(0.2, 0.3, 0.5, 8);
+                const cropMaterial = new THREE.MeshBasicMaterial({ color: 0x4CAF50 });
+                const cropMesh = new THREE.Mesh(cropGeometry, cropMaterial);
+                
+                // Position the crop in the correct plot
+                const plotX = field.x - field.width/2 + (plot.col * field.width/field.cols) + field.width/field.cols/2;
+                const plotZ = field.z - field.depth/2 + (plot.row * field.depth/field.rows) + field.depth/field.rows/2;
+                
+                cropMesh.position.set(plotX, 0.5, plotZ);
+                scene.add(cropMesh);
+                plot.mesh = cropMesh;
+                
+                showNotification(`Planted ${crops[gameState.selectedCrop].name}`);
+                soundEffects.plant.play();
+                
+                // Start growth interval if not already running
+                if (!gameState.growthInterval) {
+                    startGrowthInterval();
+                }
+            }
+            
+            // Harvest crop from a plot
+            function harvestCrop(field, plot) {
+                if (gameState.energy < gameState.energyConsumption) {
+                    showNotification("Not enough energy to harvest!");
+                    soundEffects.error.play();
+                    return;
+                }
+                
+                const cropType = plot.crop;
+                let earnings = crops[cropType].sellPrice;
+                
+                // Apply irrigation bonus if available
+                if (gameState.upgrades.irrigation) {
+                    earnings = Math.floor(earnings * 1.2);
+                }
+                
+                gameState.money += earnings;
+                gameState.exp += earnings / 2;
+                gameState.energy -= gameState.energyConsumption;
+                
+                // Add to profit history
+                gameState.profitHistory.push(earnings);
+                if (gameState.profitHistory.length > 7) {
+                    gameState.profitHistory.shift();
+                }
+                updateProfitChart();
+                
+                // Check for level up
+                checkLevelUp();
+                
+                showNotification(`Harvested ${crops[cropType].name} for $${earnings}`);
+                soundEffects.harvest.play();
+                soundEffects.coins.play();
+                
+                // Clear the plot
+                plot.crop = null;
+                plot.progress = 0;
+                
+                // Remove 3D representation
+                if (plot.mesh) {
+                    scene.remove(plot.mesh);
+                    plot.mesh = null;
+                }
+                
+                updateStats();
+            }
+            
+            // Harvest all ready crops
+            function harvestAll() {
+                let harvested = 0;
+                let totalEarnings = 0;
+                
+                gameState.fields.forEach(field => {
+                    field.plots.forEach(plot => {
+                        if (plot.crop && plot.progress >= 100) {
+                            if (gameState.energy >= gameState.energyConsumption) {
+                                let earnings = crops[plot.crop].sellPrice;
+                                
+                                // Apply irrigation bonus if available
+                                if (gameState.upgrades.irrigation) {
+                                    earnings = Math.floor(earnings * 1.2);
+                                }
+                                
+                                totalEarnings += earnings;
+                                gameState.exp += earnings / 2;
+                                gameState.energy -= gameState.energyConsumption;
+                                
+                                // Clear the plot
+                                plot.crop = null;
+                                plot.progress = 0;
+                                
+                                // Remove 3D representation
+                                if (plot.mesh) {
+                                    scene.remove(plot.mesh);
+                                    plot.mesh = null;
+                                }
+                                
+                                harvested++;
+                            }
+                        }
+                    });
+                });
+                
+                if (harvested > 0) {
+                    gameState.money += totalEarnings;
+                    
+                    // Add to profit history
+                    gameState.profitHistory.push(totalEarnings);
+                    if (gameState.profitHistory.length > 7) {
+                        gameState.profitHistory.shift();
+                    }
+                    updateProfitChart();
+                    
+                    checkLevelUp();
+                    showNotification(`Harvested ${harvested} crops for $${totalEarnings}`);
+                    soundEffects.harvest.play();
+                    soundEffects.coins.play();
+                    updateStats();
+                } else {
+                    showNotification("No crops ready for harvest!");
+                    soundEffects.error.play();
+                }
+            }
+            
+            // Buy new land
+            function buyLand() {
+                if (gameState.money >= 50) {
+                    gameState.money -= 50;
+                    
+                    // Create a new field in a random position
+                    const x = (Math.random() - 0.5) * 60;
+                    const z = (Math.random() - 0.5) * 60;
+                    const rows = 3;
+                    const cols = 3;
+                    const width = 20;
+                    const depth = 20;
+                    
+                    createField(x, z, width, depth, rows, cols);
+                    
+                    showNotification("Bought a new field!");
+                    soundEffects.coins.play();
+                    updateStats();
+                } else {
+                    showNotification("Not enough money to buy land!");
+                    soundEffects.error.play();
+                }
+            }
+            
+            // Buy item from shop
+            function buyItem(item) {
+                switch(item) {
+                    case 'fertilizer':
+                        if (gameState.money >= 30 && !gameState.upgrades.fertilizer) {
+                            gameState.money -= 30;
+                            gameState.upgrades.fertilizer = true;
+                            showNotification("Bought fertilizer! Crops will grow 25% faster.");
+                            soundEffects.coins.play();
+                            updateStats();
+                        } else if (gameState.upgrades.fertilizer) {
+                            showNotification("You already have fertilizer!");
+                            soundEffects.error.play();
+                        } else {
+                            showNotification("Not enough money to buy fertilizer!");
+                            soundEffects.error.play();
+                        }
+                        break;
+                        
+                    case 'irrigation':
+                        if (gameState.money >= 50 && !gameState.upgrades.irrigation) {
+                            gameState.money -= 50;
+                            gameState.upgrades.irrigation = true;
+                            showNotification("Bought irrigation system! Crops yield 20% more.");
+                            soundEffects.coins.play();
+                            updateStats();
+                        } else if (gameState.upgrades.irrigation) {
+                            showNotification("You already have an irrigation system!");
+                            soundEffects.error.play();
+                        } else {
+                            showNotification("Not enough money to buy irrigation system!");
+                            soundEffects.error.play();
+                        }
+                        break;
+                        
+                    case 'greenhouse':
+                        if (gameState.money >= 200 && !gameState.upgrades.greenhouse) {
+                            gameState.money -= 200;
+                            gameState.upgrades.greenhouse = true;
+                            showNotification("Bought greenhouse! Unlocked rare crops.");
+                            soundEffects.coins.play();
+                            updateStats();
+                        } else if (gameState.upgrades.greenhouse) {
+                            showNotification("You already have a greenhouse!");
+                            soundEffects.error.play();
+                        } else {
+                            showNotification("Not enough money to buy greenhouse!");
+                            soundEffects.error.play();
+                        }
+                        break;
+                }
+            }
+            
+            // Upgrade tools
+            function upgradeTools() {
+                if (gameState.money >= 100) {
+                    gameState.money -= 100;
+                    gameState.toolsLevel++;
+                    gameState.energyConsumption = Math.max(2, gameState.energyConsumption - 1);
+                    
+                    showNotification(`Upgraded tools to level ${gameState.toolsLevel}!`);
+                    soundEffects.coins.play();
+                    updateStats();
+                    
+                    // Show upgrade modal
+                    showModal(upgradeModal);
+                } else {
+                    showNotification("Not enough money to upgrade tools!");
+                    soundEffects.error.play();
+                }
+            }
+            
+            // Manage farm (placeholder for future functionality)
+            function manageFarm() {
+                showNotification("Farm management features coming soon!");
+            }
+            
+            // Toggle weather
+            function toggleWeather() {
+                gameState.weather = gameState.weather === 'sunny' ? 'rainy' : 'sunny';
+                weatherToggleBtn.textContent = `Weather: ${gameState.weather.charAt(0).toUpperCase() + gameState.weather.slice(1)}`;
+                
+                // Change scene background color based on weather
+                renderer.setClearColor(gameState.weather === 'sunny' ? 0x87CEEB : 0x616161);
+                
+                showNotification(`Weather changed to ${gameState.weather}`);
+            }
+            
+            // Toggle time
+            function toggleTime() {
+                gameState.time = gameState.time === 'day' ? 'night' : 'day';
+                timeToggleBtn.textContent = `Time: ${gameState.time.charAt(0).toUpperCase() + gameState.time.slice(1)}`;
+                
+                // Change scene lighting based on time
+                scene.background = new THREE.Color(gameState.time === 'day' ? 0x87CEEB : 0x111133);
+                
+                showNotification(`Time changed to ${gameState.time}`);
+            }
+            
+            // Start growth interval
+            function startGrowthInterval() {
+                gameState.growthInterval = setInterval(() => {
+                    let anyCropsGrowing = false;
+                    
+                    gameState.fields.forEach(field => {
+                        field.plots.forEach(plot => {
+                            if (plot.crop) {
+                                anyCropsGrowing = true;
+                                const elapsed = (Date.now() - plot.plantedAt) / 1000;
+                                
+                                // Apply fertilizer bonus if available
+                                const growTime = gameState.upgrades.fertilizer ? 
+                                    crops[plot.crop].growTime * 0.75 : crops[plot.crop].growTime;
+                                
+                                plot.progress = Math.min((elapsed / growTime) * 100, 100);
+                                
+                                // Update 3D representation
+                                if (plot.mesh) {
+                                    // Grow the crop based on progress
+                                    const scale = 0.5 + (plot.progress / 100) * 1.5;
+                                    plot.mesh.scale.set(1, scale, 1);
+                                    
+                                    // Change color based on growth
+                                    const greenValue = 0.3 + (plot.progress / 100) * 0.7;
+                                    plot.mesh.material.color.setRGB(0.3, greenValue, 0.1);
+                                }
+                            }
+                        });
+                    });
+                    
+                    if (!anyCropsGrowing) {
+                        clearInterval(gameState.growthInterval);
+                        gameState.growthInterval = null;
+                    }
+                }, 1000);
+            }
+            
+            // Update energy
+            function updateEnergy() {
+                if (gameState.energy < gameState.maxEnergy) {
+                    gameState.energy = Math.min(gameState.maxEnergy, gameState.energy + gameState.energyRecoveryRate);
+                    updateStats();
+                }
+            }
+            
+            // Check for level up
+            function checkLevelUp() {
+                if (gameState.exp >= gameState.expToNextLevel) {
+                    gameState.level++;
+                    gameState.exp -= gameState.expToNextLevel;
+                    gameState.expToNextLevel = Math.floor(gameState.expToNextLevel * 1.5);
+                    gameState.maxEnergy += 10;
+                    gameState.energy = gameState.maxEnergy;
+                    
+                    showNotification(`Level up! You are now level ${gameState.level}`, true);
+                    updateStats();
+                }
+            }
+            
+            // Update stats display
+            function updateStats() {
+                moneyEl.textContent = `$${gameState.money}`;
+                levelEl.textContent = gameState.level;
+                expEl.textContent = `${Math.floor(gameState.exp)}/${gameState.expToNextLevel}`;
+                expProgressEl.style.width = `${(gameState.exp / gameState.expToNextLevel) * 100}%`;
+                energyEl.textContent = `${Math.floor(gameState.energy)}/${gameState.maxEnergy}`;
+                energyProgressEl.style.width = `${(gameState.energy / gameState.maxEnergy) * 100}%`;
+            }
+            
+            // Update profit chart
+            function updateProfitChart() {
+                profitChart.data.datasets[0].data = gameState.profitHistory;
+                profitChart.update();
+            }
+            
+            // Show notification
+            function showNotification(message, isLevelUp = false) {
+                notificationEl.textContent = message;
+                notificationEl.className = 'notification';
+                
+                if (isLevelUp) {
+                    notificationEl.classList.add('level-up');
+                }
+                
+                notificationEl.classList.add('show');
+                
+                setTimeout(() => {
+                    notificationEl.classList.remove('show');
+                }, 3000);
+            }
+            
+            // Show tooltip
+            function showTooltip(text, x, y) {
+                tooltipEl.textContent = text;
+                tooltipEl.style.left = `${x + 10}px`;
+                tooltipEl.style.top = `${y + 10}px`;
+                tooltipEl.classList.add('show');
+            }
+            
+            // Hide tooltip
+            function hideTooltip() {
+                tooltipEl.classList.remove('show');
+            }
+            
+            // Show modal
+            function showModal(modal) {
+                modal.style.display = 'block';
+                modalOverlay.style.display = 'block';
+            }
+            
+            // Close modal
+            function closeModal() {
+                upgradeModal.style.display = 'none';
+                modalOverlay.style.display = 'none';
+            }
+            
+            // Save game
+            function saveGame() {
+                localStorage.setItem('farmGameSave', JSON.stringify(gameState));
+                showNotification("Game saved automatically");
+            }
+            
+            // Load game
+            function loadGame() {
+                const saveData = localStorage.getItem('farmGameSave');
+                if (saveData) {
+                    const loadedState = JSON.parse(saveData);
+                    Object.assign(gameState, loadedState);
+                    updateStats();
+                    updateProfitChart();
+                    showNotification("Game loaded successfully");
+                }
+            }
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                TWEEN.update();
+                renderer.render(scene, camera);
+            }
+            
+            // Handle window resize
+            window.addEventListener('resize', function() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            // Add click event to plant/harvest crops
+            renderer.domElement.addEventListener('click', function(event) {
+                // Calculate mouse position in normalized device coordinates (-1 to +1)
+                const mouse = new THREE.Vector2();
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                // Raycasting to detect clicks on plots
+                const raycaster = new THREE.Raycaster();
+                raycaster.setFromCamera(mouse, camera);
+                
+                // Check intersections with ground
+                const intersects = raycaster.intersectObject(ground);
+                
+                if (intersects.length > 0) {
+                    const point = intersects[0].point;
+                    
+                    // Find which field and plot was clicked
+                    for (const field of gameState.fields) {
+                        if (point.x >= field.x - field.width/2 && point.x <= field.x + field.width/2 &&
+                            point.z >= field.z - field.depth/2 && point.z <= field.z + field.depth/2) {
+                            
+                            const col = Math.floor((point.x - (field.x - field.width/2)) / (field.width / field.cols));
+                            const row = Math.floor((point.z - (field.z - field.depth/2)) / (field.depth / field.rows));
+                            
+                            if (row >= 0 && row < field.rows && col >= 0 && col < field.cols) {
+                                const plot = field.plots[row * field.cols + col];
+                                
+                                if (plot.crop) {
+                                    // If crop is ready to harvest
+                                    if (plot.progress >= 100) {
+                                        harvestCrop(field, plot);
+                                    }
+                                } else if (gameState.selectedCrop) {
+                                    // Plant new crop
+                                    plantCrop(field, plot);
+                                }
+                            }
+                            
+                            break;
+                        }
+                    }
+                }
+            });
+            
+            // Initialize the game
+            initGame();
+        });
+    </script>
+</body>
+</html>
